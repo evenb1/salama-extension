@@ -1,9 +1,13 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from transformers import pipeline
-import torch
+from openai import OpenAI
+import os
+from dotenv import load_dotenv
 from contract_fetcher import get_contract_source
+
+# Load environment variables
+load_dotenv()
 
 app = FastAPI(title="SALAMA API")
 
@@ -14,34 +18,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Load UlizaLlama (HuggingFace will download it)
-print("🔄 Loading UlizaLlama model...")
-try:
-    llm = pipeline(
-        "text-generation",
-        model="Jacaranda/UlizaLlama",
-        torch_dtype=torch.float16,
-        device_map="auto"
-    )
-    print("✅ UlizaLlama loaded successfully!")
-except Exception as e:
-    print(f"❌ Error loading model: {e}")
-    llm = None
+# Initialize OpenAI client
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @app.get("/")
 def root():
     return {
         "message": "SALAMA API",
         "status": "ok",
-        "version": "0.4.0",
-        "model_loaded": llm is not None
+        "version": "0.5.0",
+        "llm": "OpenAI GPT-4"
     }
 
 @app.get("/health")
 def health():
     return {
         "status": "healthy",
-        "model_status": "loaded" if llm else "not loaded"
+        "llm_status": "ready"
     }
 
 class AnalyzeRequest(BaseModel):
@@ -50,9 +43,6 @@ class AnalyzeRequest(BaseModel):
 @app.post("/analyze")
 def analyze_contract(request: AnalyzeRequest):
     """Analyze smart contract and return Swahili explanation"""
-    
-    if not llm:
-        raise HTTPException(status_code=503, detail="Model not loaded yet")
     
     # Fetch actual contract from blockchain
     contract_data = get_contract_source(request.contract_address)
@@ -64,25 +54,33 @@ def analyze_contract(request: AnalyzeRequest):
         )
     
     # Build prompt with real contract code
-    prompt = f"""Eleza contract hii kwa Kiswahili rahisi.
+    prompt = f"""Wewe ni msaidizi wa usalama wa blockchain. Eleza contract hii kwa Kiswahili sanifu na rahisi.
 
 Contract Name: {contract_data['contract_name']}
 Address: {request.contract_address}
 
-Code (first 500 characters):
-{contract_data['source_code'][:500]}
+Code (first 1000 characters):
+{contract_data['source_code'][:1000]}
 
-Je, contract hii inafanya nini? Eleza kwa lugha ya kawaida."""
+Tafadhali:
+1. Eleza kwa ufupi contract hii inafanya nini
+2. Je, ina hatari yoyote kwa mtumiaji?
+3. Toa ushauri wa usalama
+
+Jibu kwa Kiswahili tu, kwa lugha ya kawaida ambayo Mkenya anaweza kuelewa."""
     
     try:
-        result = llm(
-            prompt,
-            max_new_tokens=200,
-            do_sample=True,
+        response = client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "Wewe ni msaidizi wa usalama wa blockchain. Eleza mambo kwa Kiswahili rahisi."},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=500,
             temperature=0.7
         )
         
-        explanation = result[0]['generated_text']
+        explanation = response.choices[0].message.content
         
         return {
             "contract_address": request.contract_address,
@@ -90,7 +88,7 @@ Je, contract hii inafanya nini? Eleza kwa lugha ya kawaida."""
             "explanation": explanation,
             "risk_score": 0,
             "warnings": [],
-            "is_mock": False
+            "llm_used": "OpenAI GPT-4"
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
