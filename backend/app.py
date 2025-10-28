@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from transformers import pipeline
 import torch
+from contract_fetcher import get_contract_source
 
 app = FastAPI(title="SALAMA API")
 
@@ -32,7 +33,7 @@ def root():
     return {
         "message": "SALAMA API",
         "status": "ok",
-        "version": "0.3.0",
+        "version": "0.4.0",
         "model_loaded": llm is not None
     }
 
@@ -53,10 +54,23 @@ def analyze_contract(request: AnalyzeRequest):
     if not llm:
         raise HTTPException(status_code=503, detail="Model not loaded yet")
     
-    # Simple prompt for now (we'll improve this later with contract fetching)
+    # Fetch actual contract from blockchain
+    contract_data = get_contract_source(request.contract_address)
+    
+    if not contract_data.get("success"):
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Could not fetch contract: {contract_data.get('error')}"
+        )
+    
+    # Build prompt with real contract code
     prompt = f"""Eleza contract hii kwa Kiswahili rahisi.
 
-Contract address: {request.contract_address}
+Contract Name: {contract_data['contract_name']}
+Address: {request.contract_address}
+
+Code (first 500 characters):
+{contract_data['source_code'][:500]}
 
 Je, contract hii inafanya nini? Eleza kwa lugha ya kawaida."""
     
@@ -72,6 +86,7 @@ Je, contract hii inafanya nini? Eleza kwa lugha ya kawaida."""
         
         return {
             "contract_address": request.contract_address,
+            "contract_name": contract_data['contract_name'],
             "explanation": explanation,
             "risk_score": 0,
             "warnings": [],
