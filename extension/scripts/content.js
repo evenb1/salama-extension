@@ -1,28 +1,25 @@
-// Detect MetaMask transactions
-console.log('🛡️ SALAMA: Content script loaded');
+console.log('SALAMA: Content script loaded');
 
-// Listen for MetaMask ethereum requests
 if (window.ethereum) {
-  console.log('🛡️ SALAMA: MetaMask detected');
+  console.log('SALAMA: MetaMask detected');
   
   const originalRequest = window.ethereum.request;
   
   window.ethereum.request = async function(args) {
-    console.log('🛡️ SALAMA: Ethereum request detected', args);
+    console.log('SALAMA: Ethereum request detected', args);
     
     if (args.method === 'eth_sendTransaction' || 
         args.method === 'eth_signTypedData_v4') {
       
-      const params = args.params?.[0];
-      const contractAddress = params?.to;
+      const params = args.params ? args.params[0] : null;
+      const contractAddress = params ? params.to : null;
       
       if (contractAddress) {
-        console.log('🛡️ SALAMA: Contract interaction detected:', contractAddress);
+        console.log('SALAMA: Contract interaction detected:', contractAddress);
         
         chrome.runtime.sendMessage({
           type: 'ANALYZE_CONTRACT',
-          contractAddress: contractAddress,
-          transactionData: params
+          contractAddress: contractAddress
         });
       }
     }
@@ -31,37 +28,45 @@ if (window.ethereum) {
   };
 }
 
-// Detect contract addresses on the page
 function detectContractsOnPage() {
+  const addresses = new Set();
+  
+  // Method 1: Search in text content
   const text = document.body.innerText;
   const addressRegex = /0x[a-fA-F0-9]{40}/g;
-  const addresses = text.match(addressRegex);
+  const matches = text.match(addressRegex);
   
-  if (addresses && addresses.length > 0) {
-    console.log('🛡️ SALAMA: Found addresses on page:', addresses.length);
-    
+  if (matches) {
+    matches.forEach(addr => addresses.add(addr));
+  }
+  
+  // Method 2: Search in code/pre tags
+  document.querySelectorAll('code, pre, span[class*="address"]').forEach(el => {
+    const match = el.textContent.match(/0x[a-fA-F0-9]{40}/);
+    if (match) addresses.add(match[0]);
+  });
+  
+  // Method 3: Search in input fields
+  document.querySelectorAll('input[type="text"]').forEach(input => {
+    const match = input.value.match(/0x[a-fA-F0-9]{40}/);
+    if (match) addresses.add(match[0]);
+  });
+  
+  const addressArray = Array.from(addresses);
+  
+  console.log('SALAMA: Found', addressArray.length, 'addresses on page');
+  
+  if (addressArray.length > 0) {
     chrome.runtime.sendMessage({
       type: 'PAGE_CONTRACTS',
-      addresses: [...new Set(addresses)]
+      addresses: addressArray
     });
   }
 }
 
-// Create floating SALAMA button
 function createFloatingButton() {
-  // Don't add button if already exists
   if (document.getElementById('salama-float-btn')) return;
   
-  const button = document.createElement('div');
-  button.id = 'salama-float-btn';
-  button.innerHTML = `
-    <div class="salama-btn-content">
-      <span class="salama-icon">🛡️</span>
-      <span class="salama-text">SALAMA</span>
-    </div>
-  `;
-  
-  // Add styles
   const style = document.createElement('style');
   style.textContent = `
     #salama-float-btn {
@@ -76,29 +81,18 @@ function createFloatingButton() {
       z-index: 999999;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       transition: all 0.2s;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-family: -apple-system, sans-serif;
       font-size: 14px;
       font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     
     #salama-float-btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
       background: #2a2a2a;
-    }
-    
-    .salama-btn-content {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    
-    .salama-icon {
-      font-size: 18px;
-    }
-    
-    .salama-text {
-      letter-spacing: 0.5px;
     }
     
     #salama-overlay {
@@ -113,6 +107,8 @@ function createFloatingButton() {
       z-index: 1000000;
       max-width: 500px;
       width: 90%;
+      max-height: 400px;
+      overflow-y: auto;
     }
     
     #salama-backdrop {
@@ -125,39 +121,15 @@ function createFloatingButton() {
       z-index: 999999;
     }
     
-    .salama-overlay-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-    }
-    
-    .salama-overlay-title {
-      font-size: 18px;
-      font-weight: 600;
-      color: #1a1a1a;
-    }
-    
-    .salama-close-btn {
-      cursor: pointer;
-      font-size: 24px;
-      color: #737373;
-    }
-    
-    .salama-contract-list {
-      max-height: 300px;
-      overflow-y: auto;
-    }
-    
     .salama-contract-item {
       padding: 12px;
       background: #fafafa;
       border-radius: 8px;
       margin-bottom: 8px;
       cursor: pointer;
-      transition: background 0.2s;
-      font-family: 'SF Mono', monospace;
+      font-family: monospace;
       font-size: 13px;
+      word-break: break-all;
     }
     
     .salama-contract-item:hover {
@@ -166,74 +138,60 @@ function createFloatingButton() {
   `;
   
   document.head.appendChild(style);
-  document.body.appendChild(button);
   
-  // Click handler
-  button.addEventListener('click', showContractOverlay);
+  const button = document.createElement('div');
+  button.id = 'salama-float-btn';
+  button.innerHTML = '<span>🛡️</span><span>SALAMA</span>';
+  button.onclick = showOverlay;
+  
+  document.body.appendChild(button);
 }
 
-function showContractOverlay() {
-  // Get detected contracts from storage
-  chrome.storage.local.get([`contracts_${getCurrentTabId()}`], (result) => {
-    const contracts = result[`contracts_${getCurrentTabId()}`] || [];
+function showOverlay() {
+  chrome.storage.local.get([`contracts_${window.location.hostname}`], (result) => {
+    const contracts = result[`contracts_${window.location.hostname}`] || [];
     
-    // Create backdrop
     const backdrop = document.createElement('div');
     backdrop.id = 'salama-backdrop';
+    backdrop.onclick = closeOverlay;
     
-    // Create overlay
     const overlay = document.createElement('div');
     overlay.id = 'salama-overlay';
     overlay.innerHTML = `
-      <div class="salama-overlay-header">
-        <div class="salama-overlay-title">🛡️ Contracts on this page</div>
-        <div class="salama-close-btn">×</div>
-      </div>
-      <div class="salama-contract-list">
+      <h2 style="margin-bottom: 16px;">🛡️ Contracts on this page</h2>
+      <div>
         ${contracts.length > 0 
           ? contracts.map(addr => `
-              <div class="salama-contract-item" data-address="${addr}">
+              <div class="salama-contract-item" onclick="analyzeThis('${addr}')">
                 ${addr}
               </div>
             `).join('')
-          : '<p style="color: #737373; text-align: center;">No contracts detected on this page</p>'
+          : '<p style="color: #737373;">No contracts detected yet. Try interacting with the page.</p>'
         }
       </div>
     `;
     
     document.body.appendChild(backdrop);
     document.body.appendChild(overlay);
-    
-    // Close handlers
-    backdrop.addEventListener('click', closeOverlay);
-    overlay.querySelector('.salama-close-btn').addEventListener('click', closeOverlay);
-    
-    // Contract click handlers
-    overlay.querySelectorAll('.salama-contract-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const address = item.dataset.address;
-        chrome.runtime.sendMessage({
-          type: 'ANALYZE_CONTRACT',
-          contractAddress: address
-        });
-        closeOverlay();
-      });
-    });
   });
 }
+
+window.analyzeThis = function(address) {
+  chrome.runtime.sendMessage({
+    type: 'ANALYZE_CONTRACT',
+    contractAddress: address
+  });
+  closeOverlay();
+};
 
 function closeOverlay() {
   document.getElementById('salama-backdrop')?.remove();
   document.getElementById('salama-overlay')?.remove();
 }
 
-function getCurrentTabId() {
-  // Helper to get consistent tab identifier
-  return window.location.hostname;
-}
-
-// Initialize
 setTimeout(() => {
   detectContractsOnPage();
   createFloatingButton();
-}, 2000);
+}, 3000);
+
+setInterval(detectContractsOnPage, 10000);
