@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🛡️ SALAMA</h1>
+      <p class="tagline">Smart Contract Safety</p>
+    </div>
+    
+    <div id="status" class="status">
+      <p>Karibu! Extension iko ready.</p>
+    </div>
+    
+    <div class="test-section">
+      <h3>Test Analysis</h3>
+      <input 
+        type="text" 
+        id="contractInput" 
+        placeholder="Paste contract address..."
+      />
+      <button id="analyzeBtn">Analyze Contract</button>
+    </div>
+    
+    <div id="results" class="results hidden">
+      <div class="risk-score">
+        <span id="riskValue">-</span>
+        <span class="risk-label">Risk Score</span>
+      </div>
+      <div class="explanation">
+        <h4>Explanation:</h4>
+        <p id="explanationText"></p>
+      </div>
+      <div id="warnings" class="warnings"></div>
+    </div>
+  </div>
+  
+  <script src="popup.js"></script>
+</body>
+</html>
