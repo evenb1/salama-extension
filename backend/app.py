@@ -27,7 +27,7 @@ def root():
         "message": "SALAMA API",
         "status": "ok",
         "version": "0.5.0",
-        "llm": "OpenAI GPT-4"
+        "llm": "OpenAI GPT-4o-mini"
     }
 
 @app.get("/health")
@@ -71,7 +71,7 @@ Jibu kwa Kiswahili tu, kwa lugha ya kawaida ambayo Mkenya anaweza kuelewa."""
     
     try:
         response = client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "Wewe ni msaidizi wa usalama wa blockchain. Eleza mambo kwa Kiswahili rahisi."},
                 {"role": "user", "content": prompt}
