@@ -1,17 +1,17 @@
 const API_URL = 'http://localhost:7860'\;
 
-// Listen for messages from content script
+console.log('🛡️ SALAMA: Background script loaded');
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('🛡️ SALAMA Background received:', message);
   
   if (message.type === 'ANALYZE_CONTRACT') {
-    analyzeAndNotify(message.contractAddress, sender.tab.id);
+    analyzeAndNotify(message.contractAddress, sender.tab?.id);
   }
   
   if (message.type === 'PAGE_CONTRACTS') {
-    // Store detected contracts for this tab
     chrome.storage.local.set({
-      [`contracts_${sender.tab.id}`]: message.addresses
+      [`contracts_${sender.tab?.id}`]: message.addresses
     });
   }
   
@@ -30,16 +30,14 @@ async function analyzeAndNotify(contractAddress, tabId) {
     
     const data = await response.json();
     
-    // Show notification
     chrome.notifications.create({
       type: 'basic',
-      iconUrl: '../icons/icon128.png',
+      iconUrl: '/icons/icon128.png',
       title: '🛡️ SALAMA Analysis',
-      message: `Risk: ${data.risk_score}/10\n${data.explanation.substring(0, 100)}...`,
+      message: `Risk: ${data.risk_score}/10`,
       priority: 2
     });
     
-    // Store analysis for popup to access
     chrome.storage.local.set({
       [`analysis_${contractAddress}`]: data
     });
