@@ -12,8 +12,14 @@ async function analyzeContract() {
   }
   
   const btn = document.getElementById('analyzeBtn');
+  const loadingState = document.getElementById('loadingState');
+  const results = document.getElementById('results');
+  
+  // Show loading, hide results
   btn.disabled = true;
-  btn.textContent = 'Analyzing...';
+  btn.innerHTML = '<span class="spinner"></span> Analyzing...';
+  loadingState.classList.remove('hidden');
+  results.classList.add('hidden');
   
   try {
     const response = await fetch(`${API_URL}/analyze`, {
@@ -38,6 +44,7 @@ async function analyzeContract() {
   } finally {
     btn.disabled = false;
     btn.textContent = 'Analyze Contract';
+    loadingState.classList.add('hidden');
   }
 }
 
