@@ -7,7 +7,7 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>🛡️ SALAMA</h1>
+      <h1>SALAMA</h1>
       <p class="tagline">Smart Contract Safety</p>
     </div>
     
@@ -23,6 +23,11 @@
         placeholder="Paste contract address..."
       />
       <button id="analyzeBtn">Analyze Contract</button>
+    </div>
+    
+    <div id="loadingState" class="loading-state hidden">
+      <div class="loading-spinner"></div>
+      <span>Analyzing contract...</span>
     </div>
     
     <div id="results" class="results hidden">
