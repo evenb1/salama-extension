@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:7860'\;
+const API_URL = 'http://localhost:7860';
 
 document.getElementById('analyzeBtn').addEventListener('click', analyzeContract);
 
