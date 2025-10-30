@@ -7,14 +7,15 @@ def get_contract_source(address: str, chain: str = "ethereum") -> dict:
     """Fetch verified contract source code from blockchain explorer"""
     
     base_urls = {
-        "ethereum": "https://api.etherscan.io/api",
-        "polygon": "https://api.polygonscan.com/api",
-        "base": "https://api.basescan.org/api"
+        "ethereum": "https://api.etherscan.io/v2/api",
+        "polygon": "https://api.polygonscan.com/v2/api",
+        "base": "https://api.basescan.org/v2/api"
     }
     
     url = base_urls.get(chain, base_urls["ethereum"])
     
     params = {
+        "chainid": "1",
         "module": "contract",
         "action": "getsourcecode",
         "address": address,

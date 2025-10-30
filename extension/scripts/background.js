@@ -1,27 +1,26 @@
-const API_URL = 'http://localhost:7860'\;
+const API_URL = 'http://localhost:7860';
 
-console.log('🛡️ SALAMA: Background script loaded');
+console.log('SALAMA Background loaded');
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('🛡️ SALAMA Background received:', message);
+  console.log('SALAMA Background received:', message);
   
   if (message.type === 'ANALYZE_CONTRACT') {
-    analyzeAndNotify(message.contractAddress, sender.tab?.id);
+    analyzeContract(message.contractAddress);
   }
   
   if (message.type === 'PAGE_CONTRACTS') {
+    const tabId = sender.tab ? sender.tab.id : 'unknown';
     chrome.storage.local.set({
-      [`contracts_${sender.tab?.id}`]: message.addresses
+      [`contracts_${tabId}`]: message.addresses
     });
   }
   
   return true;
 });
 
-async function analyzeAndNotify(contractAddress, tabId) {
+async function analyzeContract(contractAddress) {
   try {
-    console.log('🛡️ Analyzing:', contractAddress);
-    
     const response = await fetch(`${API_URL}/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -33,16 +32,12 @@ async function analyzeAndNotify(contractAddress, tabId) {
     chrome.notifications.create({
       type: 'basic',
       iconUrl: '/icons/icon128.png',
-      title: '🛡️ SALAMA Analysis',
+      title: 'SALAMA Analysis',
       message: `Risk: ${data.risk_score}/10`,
       priority: 2
     });
     
-    chrome.storage.local.set({
-      [`analysis_${contractAddress}`]: data
-    });
-    
   } catch (error) {
-    console.error('🛡️ SALAMA Error:', error);
+    console.error('SALAMA Error:', error);
   }
 }
