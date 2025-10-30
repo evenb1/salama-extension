@@ -50,9 +50,20 @@ function displayResults(data) {
   // Show results
   resultsDiv.classList.remove('hidden');
   
-  // Risk score
+  // Risk score with color class
   riskValue.textContent = data.risk_score;
-  riskValue.style.color = getRiskColor(data.risk_score);
+  
+  // Remove old risk classes
+  riskValue.classList.remove('risk-low', 'risk-medium', 'risk-high');
+  
+  // Add appropriate risk class
+  if (data.risk_score <= 3) {
+    riskValue.classList.add('risk-low');
+  } else if (data.risk_score <= 6) {
+    riskValue.classList.add('risk-medium');
+  } else {
+    riskValue.classList.add('risk-high');
+  }
   
   // Explanation
   explanationText.textContent = data.explanation;
@@ -67,10 +78,4 @@ function displayResults(data) {
       warningsDiv.appendChild(div);
     });
   }
-}
-
-function getRiskColor(score) {
-  if (score <= 3) return '#10b981'; // green
-  if (score <= 6) return '#f59e0b'; // yellow
-  return '#ef4444'; // red
 }
