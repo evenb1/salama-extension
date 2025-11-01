@@ -1,11 +1,12 @@
 {
   "manifest_version": 3,
   "name": "SALAMA - Smart Contract Safety",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Eleza smart contracts kwa Kiswahili. Protect yourself from scams.",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "notifications"
   ],
   "host_permissions": [
     "http://localhost:7860/*",
@@ -18,7 +19,8 @@
     {
       "matches": ["<all_urls>"],
       "js": ["scripts/content.js"],
-      "run_at": "document_end"
+      "run_at": "document_end",
+      "all_frames": true
     }
   ],
   "action": {
